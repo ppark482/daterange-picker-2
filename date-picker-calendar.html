@@ -1,0 +1,292 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../iron-icons/iron-icons.html"/>
+
+<dom-module id="date-picker-calendar">
+  <template>
+    <style>
+      :host {
+          display: block;
+          box-sizing: border-box;
+      }
+      .calendar {
+          display: block;
+          margin: 4px;
+          max-width: 270px;
+          border: 1px solid #DDDDDD;
+          padding: 4px;
+          background: #FFFFFF;
+      }
+      .calendar table {
+          width: 100%;
+          border-collapse: collapse;
+      }
+      .calendar table > thead > tr > th, .calendar table > tbody > tr > td {
+          text-align: center;
+          width: 20px;
+          height: 20px;
+          border-radius: 4px;
+          cursor: pointer;
+          white-space: nowrap;
+          padding: 5px;
+      }
+      .calendar table > thead > tr > th {
+          font-size-adjust: 0.488;
+      }
+      .calendar table > tbody > tr > td.disabled, .calendar table > tbody > tr > td.off {
+          color: #999999;
+      }
+      .calendar table > tbody > tr > td.available:hover {
+          background: #EEEEEE;
+      }
+      .calendar table > tbody > tr > td.available + .calendar table > tbody > tr > td.available.start-date {
+          border-radius: 4px 0 0 4px;
+      }
+      .calendar table > tbody > tr > td.start-date.end-date {
+          border-radius: 4px;
+      }
+      .calendar table > tbody > tr > td.in-range {
+          background: #EBF4F8;
+          border-radius: 0;
+      }
+      .calendar table > tbody > tr > td.in-range + .calendar table > tbody > tr > td.in-range.end-date {
+          border-radius: 0 4px 4px 0;
+      }
+      .calendar table > tbody > tr > td.active, .calendar table > tbody > tr > td.active:hover {
+          background-color: #357EBD;
+          border-color: #3071a9;
+          color: #fff;
+      }
+    </style>
+    <div class="calendar">
+        <table>
+            <thead>
+            <tr>
+                <th on-click="backClicked">
+                    <iron-icon icon="arrow-back" size="20"></iron-icon>
+                </th>
+                <th colspan="5">
+                    <template is="dom-if" if="{{start}}">
+                        <span>From - </span>
+                    </template>
+                    <template is="dom-if" if="{{end}}">
+                        <span>To - </span>
+                    </template>
+                    <span>{{monthName}}</span>
+                    <span>{{yearMonth.year}}</span>
+                </th>
+                <th on-click="nextClicked">
+                    <iron-icon icon="arrow-forward" size="20"></iron-icon>
+                </th>
+            </tr>
+            <tr>
+                <template is="dom-repeat" items="{{daysOfWeek}}">
+                    <th><span>{{item}}</span></th>
+                </template>
+            </tr>
+            </thead>
+            <tbody>
+
+            <template is="dom-repeat" items="{{calendarDates}}" as="tablerow">
+                <tr>
+                    <template is="dom-repeat" items="{{tablerow.row}}" as="col">
+                        <td data="{{col}}" on-click="dateClicked" class$="{{computeSelectedRanges(col)}}">{{col.day}}</td>
+                    </template>
+                </tr>
+            </template>
+
+            </tbody>
+        </table>
+    </div>
+
+  <script>
+    class DatePickerCalendar extends Polymer.Element {
+      static get is() { return 'date-picker-calendar'; }
+      static get properties() {
+        return {
+          start: {
+              type: String,
+              value: '',
+              notify: true
+          },
+          end: {
+              type: String,
+              value: '',
+              notify: true
+          },
+          selectedDate: {
+              type: String,
+              value: '',
+              notify: true,
+              observer: '_selectedDateChanged'
+          },
+          startDate: {
+              type: String,
+              value: '',
+              notify: true,
+              reflectToAttribute: true,
+              observer: '_startDateChanged'
+          },
+          endDate: {
+              type: String,
+              value: '',
+              notify: true,
+              reflectToAttribute: true,
+              observer: '_endDateChanged'
+          },
+          date: {
+              type: String,
+              value: '',
+              notify: true,
+              observer: '_dateChanged'
+          },
+          yearMonth: {
+              type: Object,
+              value: {},
+              notify: true,
+              observer: '_yearMonthChanged'
+          },
+          calendarDates: {
+              type: Array,
+              value: [],
+              notify: true
+          }
+        }
+      }
+      connectedCallback() {
+          super.connectedCallback();
+      }
+
+      ready() {
+          super.ready();
+          if (!this.selectedDate) this.selectedDate = moment().format("YYYY MM DD");
+          this.daysOfWeek = [0, 1, 2, 3, 4, 5, 6].map(function(n) {return moment().day(n).format("dd");});
+          this.calendar = [];
+      }
+      _startDateChanged() {
+          if (this.start) {
+              this.selectedDate = this.startDate;
+
+              if (this.startDate > this.endDate) {
+                  var tmpStart = this.startDate;
+                  var tmpEnd = this.endDate;
+                  this.startDate = tmpEnd;
+                  this.endDate = tmpStart;
+              }
+          }
+          else if (this.end) {
+              this._selectedDateChanged();
+          }
+      }
+      _endDateChanged() {
+          if (this.end) {
+              this.selectedDate = this.endDate;
+
+              if (this.startDate > this.endDate) {
+                  var tmpStart = this.startDate;
+                  var tmpEnd = this.endDate;
+                  this.startDate = tmpEnd;
+                  this.endDate = tmpStart;
+              }
+          }
+          else if (this.start) {
+              this._selectedDateChanged();
+          }
+      }
+      _selectedDateChanged() {
+          var tmp = this.selectedDate;
+          tmp = tmp.split('/');
+          tmp.unshift( tmp[2] );
+          tmp.pop();
+
+          if (this.start && this.selectedDate.length > 0) {
+              this.startDate = this.selectedDate;
+          } 
+          else if (this.end && this.selectedDate.length > 0) {
+              this.endDate = this.selectedDate;
+          }
+          this.date = moment(tmp.join(" "), "YYYY MM DD");
+      }
+      _dateChanged(newDate) {
+          this.rebuildYearMonth(newDate);
+      }
+      rebuildYearMonth(date) {
+          this.yearMonth = {
+              year: date.year(),
+              month: date.month()
+          };
+      }
+      _yearMonthChanged() {
+          this.rebuildCalendar();
+      }
+      rebuildCalendar() {
+          this.calendarDates = [];
+          this.firstOfMonth = moment([this.yearMonth.year, this.yearMonth.month, 1]);
+          this.monthName = this.firstOfMonth.format("MMM");
+          this.firstDayOfMonthOffset = this.firstOfMonth.day();
+          var columns = [];
+
+          for (var i = 0; i < 6 * 7; i++) {
+              var date =this.firstOfMonth.clone().add(i - this.firstDayOfMonthOffset, 'days');
+              if (i % 7 == 0) {
+                  columns = [];
+              }
+              columns.push({
+                  date: date,
+                  year: date.year(),
+                  month: date.month(),
+                  day: date.date(),
+                  identifier: date.format("L")
+              });
+              if ((i + 1) % 7 == 0) {
+                  this.push('calendarDates', {"row":columns});
+              }
+          }
+      }
+      moveMonth(n) {
+          this.firstOfMonth.add(n, 'month');
+          this.rebuildYearMonth(this.firstOfMonth);
+      }
+      backClicked() {
+          this.moveMonth(-1);
+      }
+      nextClicked() {
+          this.moveMonth(1);
+      }
+      dateClicked(e) {
+          var element = e.originalTarget ? e.originalTarget : e.toElement.data;
+          this.selectedDate = element.identifier;
+      }
+      computeSelectedRanges(col) {
+          var arr = [];
+
+          if (col.identifier === this.selectedDate) {
+              arr.push("active");
+          }
+
+          if (this.yearMonth.month != col.month) {
+              arr.push("disabled");
+          }
+
+          if (this.yearMonth.month === col.month) {
+              arr.push("available");
+          }
+
+          if (col.identifier === this.startDate) {
+              arr.push("start-date");
+          }
+
+          if (col.identifier === this.endDate) {
+              arr.push("end-date");
+          }
+
+          if ((this.startDate  <= col.identifier) && (this.endDate >= col.identifier)) {
+              arr.push("in-range");
+          }
+
+          return arr.join(" ");
+      }
+    }
+
+    window.customElements.define(DatePickerCalendar.is, DatePickerCalendar);
+  </script>
+</dom-module>

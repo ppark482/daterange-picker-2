@@ -1,0 +1,231 @@
+<link rel="import" href="../polymer/polymer-element.html">
+<link rel="import" href="../iron-selector/iron-selector.html">
+<link rel="import" href="date-picker-calendar.html">
+<script src="../moment/min/moment.min.js"></script>
+
+<dom-module id="daterange-picker-2">
+  <template>
+    <style>
+      :host {
+        display: block;
+      }
+    </style>
+    <input id="triggerRange" value="{{_selectedView}}" on-click="_toggle" class="date" readonly>
+    <template id="targetShowWrap" is="dom-if" if="{{openedState}}">
+      <div id="targetShow" class$="{{halign}}">
+          <div class="ranges">
+            <iron-selector attr-for-selected="name" selected="{{_selected}}">
+              <div on-click="_todayClicked" name="today">Today</div>
+              <div on-click="_yesterdayClicked" name="yesterday">Yesterday</div>
+              <div on-click="_last7DaysClicked" name="last7Days">Last 7 Days</div>
+              <div on-click="_last30DaysClicked" name="last30Days">Last 30 Days</div>
+              <div on-click="_thisMonthClicked" name="thisMonth">This Month</div>
+              <div on-click="_lastMonthClicked" name="lastMonth">Last Month</div>
+              <div on-click="_customClicked" name="custom">Custom</div>
+            </iron-selector>
+          </div>
+          <template is="dom-if" if="{{_showRanges}}">
+            <date-picker-calendar start="start" start-date="{{_startDate}}" end-date="{{_endDate}}"></date-picker-calendar>
+            <date-picker-calendar end="end" start-date="{{_startDate}}" end-date="{{_endDate}}"></date-picker-calendar>
+          </template>
+      </div>
+    </template>
+  </template>
+
+  <script>
+    /**
+     * `daterange-picker-2`
+     * 
+     *
+     * @customElement
+     * @polymer
+     * @demo demo/index.html
+     */
+    class DaterangePicker2 extends Polymer.Element {
+      static get is() { return 'daterange-picker-2'; }
+      static get properties() {
+        return {
+          halign: {
+            type: String,
+            value: 'right',
+            notify: true
+          },
+          selectedRange: {
+            // object shows the selected values
+            type: Object,
+            value: {},
+            notify: true,
+            reflectToAttribute: true,
+            computed: '_computeRange(_startDate, _endDate)'
+          },
+          _selected: {
+            type: String,
+            value: '',
+            observer: '_selectionChanged'
+          },
+          _selectedDate: {
+            type: String,
+            value: ''
+          },
+          _startDate: {
+            type: String,
+            notify: true,
+            reflectToAttribute: true,
+            value: ''
+          },
+          _endDate: {
+            type: String,
+            notify: true,
+            reflectToAttribute: true,
+            value: ''
+          },
+          openedState: {
+            type: Boolean,
+            value: false,
+            notify: true,
+            reflectToAttribute: true,
+            observer: '_openedChanged'
+          },
+          _showRanges: {
+            type: Boolean,
+            value: false
+          },
+          _selectedView: {
+            type: String,
+            computed: '_computeDateRange(_startDate, _endDate)'
+          },
+          _closeCanceled: false
+        }
+      }
+      connectedCallback() {
+          super.connectedCallback();
+      }
+
+      ready() {
+          super.ready();
+          var self = this;
+
+          self._startDate = moment().subtract(30, "days").format("L");
+          self._endDate = moment().format("L");
+          self._selected = "last30Days";
+
+          window.addEventListener('scroll', function() {
+            self.reposition();
+          });
+          window.addEventListener('resize', function() {
+            self.reposition();
+          });
+          this.async(self.reposition);
+      }
+
+      _selectionChanged(selected) {
+        this._showRanges = false;
+        if(selected === "custom") { this._showRanges = true; }
+      }
+
+      _computeRange(startDate, endDate) {
+        return {"startDate":startDate, "endDate":endDate};
+      }
+      _computeDateRange(startDate, endDate) {
+        return startDate + ' to ' + endDate;
+      }
+      _todayClicked() {
+        this._startDate = moment().format("L");
+        this._endDate = moment().format("L");
+        this._selected = "today";
+        this._close();
+      }
+      _yesterdayClicked() {
+        this._startDate = moment().subtract(1, "days").format("L");
+        this._endDate = moment().subtract(1, "days").format("L");
+        this._selected = "yesterday";
+        this._close();
+      }
+      _last7DaysClicked() {
+        this._startDate = moment().subtract(6, "days").format("L");
+        this._endDate = moment().format("L");
+        this._selected = "last7Days";
+        this._close();
+      }
+      _last30DaysClicked() {
+        this._startDate = moment().subtract(30, "days").format("L");
+        this._endDate = moment().format("L");
+        this._selected = "last30Days";
+        this._close();
+      }
+      _thisMonthClicked() {
+        this._startDate = moment().startOf('month').format("L");
+        this._endDate = moment().endOf('month').format("L");
+        this._selected = "thisMonth";
+        this._close();
+      }
+      _lastMonthClicked() {
+        this._startDate = moment().subtract(1, "months").startOf('month').format("L");
+        this._endDate = moment().subtract(1, "months").endOf('month').format("L");
+        this._selected = "lastMonth";
+        this._close();
+      }
+      _customClicked() {
+        this._selected = "custom";
+      }
+        
+      _openedChanged(newVal) {
+        var picker = this;
+        if (!this.clickListener) {
+          this.clickListener = function (e) {
+            if (!e.target.classList.contains('daterange-picker') && !e.target.classList.contains('date-picker-calendar')) {
+              picker.async(function () {
+                if (!picker._closeCanceled) picker._close(); else picker._closeCanceled = false
+              });
+            }
+          };
+        }
+
+        if (newVal === true) {
+          this._open();
+          this.async(function() {
+            window.addEventListener('click', picker.clickListener, false);
+          }, 100);
+        } else {
+          window.removeEventListener('click', picker.clickListener, false);
+          this._close();
+        }
+      }
+      _toggle() {
+        if (this.openedState === true) {
+          this.openedState = false;
+        } else {
+          this.openedState = true;
+          this.reposition();
+        }
+      }
+      _open() {
+        this.openedState = true;
+        this.reposition();
+      }
+      _close() {
+        this.openedState = false;
+      }
+      reposition() {
+        if (this.openedState === true) {
+          this.async(function() {
+            // access sibling or parent elements here
+            var picker = this.getBoundingClientRect();
+            var bound = Polymer.dom(this.root).querySelector('#targetShow');
+            bound.style.position = "fixed";
+
+            if (this.halign === "right") {
+              bound.style.left = (picker.right - picker.width) + "px";
+            }
+            else if (this.halign === "left") {
+              bound.style.right = (window.innerWidth - picker.right + 7)  + "px";
+
+            }
+          });
+        }
+      }
+    }
+
+    window.customElements.define(DaterangePicker2.is, DaterangePicker2);
+  </script>
+</dom-module>
