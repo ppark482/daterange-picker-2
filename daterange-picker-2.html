@@ -41,7 +41,7 @@
      * @polymer
      * @demo demo/index.html
      */
-    class DaterangePicker2 extends Polymer.Element {
+    class DaterangePicker2 extends Polymer.LegacyElementMixin(Polymer.Element) {
       static get is() { return 'daterange-picker-2'; }
       static get properties() {
         return {
@@ -115,7 +115,7 @@
           window.addEventListener('resize', function() {
             self.reposition();
           });
-          this.async(self.reposition);
+          Polymer.async(self.reposition);
       }
 
       _selectionChanged(selected) {
@@ -174,7 +174,7 @@
         if (!this.clickListener) {
           this.clickListener = function (e) {
             if (!e.target.classList.contains('daterange-picker') && !e.target.classList.contains('date-picker-calendar')) {
-              picker.async(function () {
+              Polymer.async(function () {
                 if (!picker._closeCanceled) picker._close(); else picker._closeCanceled = false
               });
             }
@@ -183,7 +183,7 @@
 
         if (newVal === true) {
           this._open();
-          this.async(function() {
+          Polymer.async(function() {
             window.addEventListener('click', picker.clickListener, false);
           }, 100);
         } else {
@@ -208,7 +208,7 @@
       }
       reposition() {
         if (this.openedState === true) {
-          this.async(function() {
+          Polymer.async(function() {
             // access sibling or parent elements here
             var picker = this.getBoundingClientRect();
             var bound = Polymer.dom(this.root).querySelector('#targetShow');
